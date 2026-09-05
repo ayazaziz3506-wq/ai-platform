@@ -7,7 +7,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Arayüzü şıklaştıran stil kodları
+# Arayüzü tamamen sadeleştiren stil kodları (İstediğin gibi kalabalık unsurlar gizli)
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -17,28 +17,31 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Oturum hafızasını başlatma
+# Oturum hafızası yönetimi
 if "selected_ai" not in st.session_state:
     st.session_state.selected_ai = None
 
 if "chats" not in st.session_state:
     st.session_state.chats = {"Model 1": [], "Model 2": [], "Model 3": []}
 
-# --- SOL MENÜ (Geçmiş ve Yeni Sohbet) ---
+# --- SOL MENÜ (3 Çizgi Menüsü: Geçmiş, Yeni Sohbet ve Model Değiştir) ---
 with st.sidebar:
     st.markdown("### 💬 Menü")
     
     if st.session_state.selected_ai:
-        if st.button("🏠 Ana Sayfa (Model Seç)", use_container_width=True):
+        # Menünün içine eklenen Değiştir / Ana Sayfa tuşu
+        if st.button("🔄 Modeli Değiştir", use_container_width=True):
             st.session_state.selected_ai = None
             st.rerun()
             
+        # Yeni Sohbet tuşu
         if st.button("➕ Yeni Sohbet", use_container_width=True):
             st.session_state.chats[st.session_state.selected_ai] = []
             st.rerun()
 
     st.divider()
     st.markdown("#### 📜 Sohbet Geçmişi")
+    
     if st.session_state.selected_ai:
         messages = st.session_state.chats.get(st.session_state.selected_ai, [])
         if not messages:
@@ -48,11 +51,11 @@ with st.sidebar:
                 icon = "👤" if msg["role"] == "user" else "🤖"
                 st.text(f"{icon} {msg['content'][:20]}...")
     else:
-        st.write("Model seçilmedi.")
+        st.write("Önce bir model seçin.")
 
 # --- ANA EKRAN ---
 
-# 1. Model Seçim Ekranı
+# 1. Aşama: İlk Açılış - 3'lü Model Seçim Ekranı
 if st.session_state.selected_ai is None:
     st.markdown("<h2 style='text-align: center; color: #fff;'>Yapay Zeka Seçin</h2>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: gray; font-size: 14px;'>Sohbet etmek istediğiniz modeli seçin</p>", unsafe_allow_html=True)
@@ -75,26 +78,19 @@ if st.session_state.selected_ai is None:
             st.session_state.selected_ai = "Model 3"
             st.rerun()
 
-# 2. WhatsApp Tarzı Sohbet Ekranı
+# 2. Aşama: WhatsApp Tarzı Tertemiz Sohbet Ekranı (Üstte butonlar yok, her şey 3 çizgide)
 else:
-    # Üst kısımda hem model adı hem de ana sayfaya dönme butonu
-    top_col1, top_col2 = st.columns([3, 1])
-    with top_col1:
-        st.markdown(f"<h4 style='color: #4CAF50; margin:0;'>🟢 {st.session_state.selected_ai}</h4>", unsafe_allow_html=True)
-    with top_col2:
-        if st.button("🔄 Değiştir"):
-            st.session_state.selected_ai = None
-            st.rerun()
-
+    # Sadece hangi modelde olduğunu gösteren sade bir başlık (veya tamamen kaldırabiliriz)
+    st.markdown(f"<p style='color: gray; font-size: 13px; margin-bottom: 0;'>Aktif: {st.session_state.selected_ai}</p>", unsafe_allow_html=True)
     st.divider()
 
-    # Mesajları ekranda tutma
+    # Mesaj geçmişini ekranda tutma
     current_messages = st.session_state.chats[st.session_state.selected_ai]
     for message in current_messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # Mesajlaşma çubuğu
+    # Mesajlaşma çubuğu (WhatsApp tarzı, gereksiz tuşlar yok)
     if prompt := st.chat_input("Mesajınızı yazın..."):
         current_messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):

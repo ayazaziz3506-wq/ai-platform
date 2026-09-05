@@ -1,38 +1,70 @@
 import streamlit as st
 
-# Sayfa ayarları (Minimalist görünüm)
+# Sayfa ayarları
 st.set_page_config(
     page_title="AI Platform",
     page_icon="💬",
     layout="centered"
 )
 
-# Streamlit'in kendi standart arayüz kalabalığını gizle
-hide_streamlit_style = """
+# Arayüzü sadeleştiren ve şıklaştıran stiller
+st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
+    .stApp { background-color: #0e1117; color: #fafafa; }
     </style>
-"""
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-# Oturum durumunda (hafızada) hangi yapay zekanın seçildiğini ve sohbet geçmişini tutalım
+# Oturum durumu (Hafıza) yönetimi
 if "selected_ai" not in st.session_state:
     st.session_state.selected_ai = None
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+if "chats" not in st.session_state:
+    st.session_state.chats = {"Model 1": [], "Model 2": [], "Model 3": []}
 
-# 1. AŞAMA: Eğer henüz bir yapay zeka seçilmediyse, 3'lü seçim ekranını göster
+if "current_chat" not in st.session_state:
+    st.session_state.current_chat = None
+
+# --- SOL MENÜ (3 Çizgi Menüsü, Yeni Sohbet ve Geçmiş) ---
+with st.sidebar:
+    st.markdown("### 💬 Sohbet Menüsü")
+    
+    # Yeni Sohbet Butonu
+    if st.button("➕ Yeni Sohbet", use_container_width=True):
+        if st.session_state.selected_ai:
+            st.session_state.chats[st.session_state.selected_ai] = []
+            st.rerun()
+
+    st.divider()
+    
+    st.markdown("#### 📜 Sohbet Geçmişi")
+    if st.session_state.selected_ai:
+        messages = st.session_state.chats.get(st.session_state.selected_ai, [])
+        if not messages:
+            st.write("Henüz mesaj yok.")
+        else:
+            for i, msg in enumerate(messages[-5:]): # Son 5 mesajın özeti
+                role_icon = "👤" if msg["role"] == "user" else "🤖"
+                st.text(f"{role_icon} {msg['content'][:25]}...")
+    else:
+        st.write("Önce bir model seçin.")
+
+    st.divider()
+    if st.session_state.selected_ai:
+        if st.button("🔄 Model Seçimine Dön", use_container_width=True):
+            st.session_state.selected_ai = None
+            st.rerun()
+
+# --- ANA EKRAN ---
+
+# 1. AŞAMA: Model Seçim Ekranı
 if st.session_state.selected_ai is None:
-    st.markdown("<h2 style='text-align: center; color: #111;'>Bir Yapay Zeka Seçin</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: gray; font-size: 14px;'>Sohbet etmek istediğiniz modeli seçerek başlayın</p>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: #fff;'>Yapay Zeka Seçin</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: gray; font-size: 14px;'>Sohbet etmek istediğiniz modeli seçin</p>", unsafe_allow_html=True)
     
     st.write("")
-    st.write("")
-
-    # Yan yana 3 sütun oluşturalım (Görseldeki 1, 2, 3 kutucukları gibi)
     col1, col2, col3 = st.columns(3)
 
     with col1:
@@ -50,35 +82,28 @@ if st.session_state.selected_ai is None:
             st.session_state.selected_ai = "Model 3"
             st.rerun()
 
-# 2. AŞAMA: Yapay zeka seçildikten sonra açılacak tertemiz WhatsApp tarzı sohbet ekranı
+# 2. AŞAMA: WhatsApp Tarzı Temiz Sohbet Ekranı
 else:
-    # Üst kısımda sade bir başlık ve geri dönme butonu
-    col_title, col_back = st.columns([4, 1])
-    with col_title:
-        st.markdown(f"<h4 style='margin: 0; color: #111;'>{st.session_state.selected_ai} ile Sohbet</h4>", unsafe_allow_html=True)
-    with col_back:
-        if st.button("← Değiştir"):
-            st.session_state.selected_ai = None
-            st.session_state.messages = []
-            st.rerun()
-
+    st.markdown(f"<h4 style='color: #4CAF50;'>🟢 Aktif Model: {st.session_state.selected_ai}</h4>", unsafe_allow_html=True)
     st.divider()
 
-    # Geçmiş mesajları ekranda tutma
-    for message in st.session_state.messages:
+    # Seçilen modelin mesaj geçmişini ekrana yazdır
+    current_messages = st.session_state.chats[st.session_state.selected_ai]
+    
+    for message in current_messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # En altta WhatsApp tarzı sade mesaj yazma çubuğu (İşaretlediğin gereksiz butonlar yok)
+    # Mesaj Giriş Alanı (Sohbeti kaybetmeme garantili hafıza)
     if prompt := st.chat_input("Mesajınızı yazın..."):
-        # Kullanıcı mesajı
-        st.session_state.messages.append({"role": "user", "content": prompt})
+        # Kullanıcı mesajını kaydet ve göster
+        current_messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # Simülasyon yanıtı (İleride buraya gerçek yapay zeka bağlanacak)
-        response = f"{st.session_state.selected_ai}: {prompt} (Yanıt)"
-        st.session_state.messages.append({"role": "assistant", "content": response})
+        # Yapay zeka yanıt simülasyonu
+        response = f"{st.session_state.selected_ai} yanıtı: {prompt}"
+        current_messages.append({"role": "assistant", "content": response})
         with st.chat_message("assistant"):
             st.markdown(response)
             

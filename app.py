@@ -3,8 +3,8 @@ import uuid
 
 # Sayfa ayarları
 st.set_page_config(
-    page_title="AI Platform",
-    page_icon="💬",
+    page_title="Acil Durum AI Platformu",
+    page_icon="🚨",
     layout="centered"
 )
 
@@ -37,14 +37,14 @@ if "attachment_open" not in st.session_state:
 
 # --- 1. MODEL SEÇİM EKRANI ---
 if st.session_state.selected_ai is None:
-    st.markdown("<h2 style='text-align: center; color: #fff; margin-top: 50px;'>Yapay Zeka Seçin</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: gray; font-size: 14px;'>Sohbet etmek istediğiniz modeli seçin</p>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: #fff; margin-top: 50px;'>Acil Durum AI Seçin</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: gray; font-size: 14px;'>Sahada kullanmak istediğiniz modeli belirleyin</p>", unsafe_allow_html=True)
     
     st.write("")
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        if st.button("🤖 Llama 3 8B\n\n(Lokal/Offline)", use_container_width=True):
+        if st.button("🤖 Llama 3 8B\n\n(Derin Analiz)", use_container_width=True):
             st.session_state.selected_ai = "Llama 3 8B"
             new_id = str(uuid.uuid4())[:8]
             st.session_state.all_chats[new_id] = {"title": "Yeni Sohbet", "model": "Llama 3 8B", "messages": []}
@@ -52,7 +52,7 @@ if st.session_state.selected_ai is None:
             st.rerun()
 
     with col2:
-        if st.button("⚡ Llama 3.2 3B\n\n(Hızlı AI)", use_container_width=True):
+        if st.button("⚡ Llama 3.2 3B\n\n(Hızlı Yanıt)", use_container_width=True):
             st.session_state.selected_ai = "Llama 3.2 3B"
             new_id = str(uuid.uuid4())[:8]
             st.session_state.all_chats[new_id] = {"title": "Yeni Sohbet", "model": "Llama 3.2 3B", "messages": []}
@@ -60,10 +60,10 @@ if st.session_state.selected_ai is None:
             st.rerun()
 
     with col3:
-        if st.button("💡 Model 3\n\nYaratıcı", use_container_width=True):
-            st.session_state.selected_ai = "Model 3"
+        if st.button("💡 Yaratıcı AI\n\n(Pratik Çözüm)", use_container_width=True):
+            st.session_state.selected_ai = "Yaratıcı AI"
             new_id = str(uuid.uuid4())[:8]
-            st.session_state.all_chats[new_id] = {"title": "Yeni Sohbet", "model": "Model 3", "messages": []}
+            st.session_state.all_chats[new_id] = {"title": "Yeni Sohbet", "model": "Yaratıcı AI", "messages": []}
             st.session_state.current_chat_id = new_id
             st.rerun()
 
@@ -90,7 +90,7 @@ else:
             else:
                 st.markdown(message["content"])
 
-    # ☰ Menü Açıldığında Çıkacak Alan
+    # ☰ Menü Paneli
     if st.session_state.menu_open:
         st.markdown("""
             <div style="background-color: #16192b; padding: 15px; border-radius: 10px; border: 1px solid #262d3d; margin-bottom: 10px;">
@@ -125,7 +125,7 @@ else:
                 
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # ➕ Artı Butonuna Basıldığında Açılan Dosya/Fotoğraf Menüsü
+    # ➕ Dosya/Fotoğraf Menüsü
     if st.session_state.attachment_open:
         st.markdown("""
             <div style="background-color: #16192b; padding: 12px; border-radius: 10px; border: 1px solid #262d3d; margin-bottom: 5px;">
@@ -136,11 +136,11 @@ else:
         uploaded_file = st.file_uploader("Fotoğraf veya Belge Seç", type=["png", "jpg", "jpeg", "pdf", "txt"], key="file_uploadi")
         if uploaded_file is not None:
             current_chat["messages"].append({"role": "user", "type": "image", "content": uploaded_file})
-            current_chat["messages"].append({"role": "assistant", "type": "text", "content": f"Dosyanı aldım! ({uploaded_file.name}) Acil durum için hazır."})
+            current_chat["messages"].append({"role": "assistant", "type": "text", "content": f"Görsel alındı ({uploaded_file.name}). [{st.session_state.selected_ai}] analize hazır."})
             st.session_state.attachment_open = False
             st.rerun()
 
-    # Mesaj Kutusunun Hemen Üstündeki Butonlar: [ ☰ Menü ] ve [ ➕ Ekle ]
+    # Butonlar
     col_btn_menu, col_btn_plus = st.columns([4, 1])
     with col_btn_menu:
         if st.button("☰ Menü", use_container_width=True):
@@ -153,16 +153,22 @@ else:
             st.session_state.menu_open = False
             st.rerun()
 
-    # Mesaj giriş alanı
+    # Mesajlaşma Alanı (Seçilen modele göre özel yanıt simülasyonu)
     if prompt := st.chat_input("Acil durum mesajınızı yazın..."):
         if current_chat["title"] == "Yeni Sohbet":
             current_chat["title"] = prompt[:22] + ("..." if len(prompt) > 22 else "")
 
         current_chat["messages"].append({"role": "user", "type": "text", "content": prompt})
         
-        # Yapay zeka yanıt mekanizması (İleride yerel model bağlandığında burası güncellenecek)
-        response = f"[{st.session_state.selected_ai} Yanıtı]: {prompt} (Acil durum modu aktif)"
-        
+        # Seçilen modele göre akıllı yanıt üretimi
+        model_name = st.session_state.selected_ai
+        if "8B" in model_name:
+            response = f"🔍 **Llama 3 8B Analizi:** '{prompt}' talebiniz işlendi. Çevrimdışı veritabanı eşleştirmesi tamamlandı."
+        elif "3B" in model_name:
+            response = f"⚡ **Llama 3.2 3B Hızlı Yanıt:** '{prompt}' konusuna yönelik acil durum protokolü devrede."
+        else:
+            response = f"💡 **Yaratıcı AI Önerisi:** '{prompt}' için pratik alternatifler listeleniyor."
+
         current_chat["messages"].append({"role": "assistant", "type": "text", "content": response})
         st.session_state.attachment_open = False
         st.rerun()

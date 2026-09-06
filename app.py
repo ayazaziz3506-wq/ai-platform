@@ -37,33 +37,33 @@ if "attachment_open" not in st.session_state:
 
 # --- 1. MODEL SEÇİM EKRANI ---
 if st.session_state.selected_ai is None:
-    st.markdown("<h2 style='text-align: center; color: #fff; margin-top: 50px;'>Acil Durum AI Seçin</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: gray; font-size: 14px;'>Sahada kullanmak istediğiniz modeli belirleyin</p>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: #fff; margin-top: 50px;'>Mod Seçimi</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: gray; font-size: 14px;'>İhtiyacınıza uygun modu seçin</p>", unsafe_allow_html=True)
     
     st.write("")
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        if st.button("🤖 Llama 3 8B\n\n(Derin Analiz)", use_container_width=True):
-            st.session_state.selected_ai = "Llama 3 8B"
+        if st.button("📴 Internetsiz\n\n(Offline Mod)", use_container_width=True):
+            st.session_state.selected_ai = "Internetsiz"
             new_id = str(uuid.uuid4())[:8]
-            st.session_state.all_chats[new_id] = {"title": "Yeni Sohbet", "model": "Llama 3 8B", "messages": []}
+            st.session_state.all_chats[new_id] = {"title": "Yeni Sohbet", "model": "Internetsiz", "messages": []}
             st.session_state.current_chat_id = new_id
             st.rerun()
 
     with col2:
-        if st.button("⚡ Llama 3.2 3B\n\n(Hızlı Yanıt)", use_container_width=True):
-            st.session_state.selected_ai = "Llama 3.2 3B"
+        if st.button("⚡ Normal\n\n(Günlük Kullanım)", use_container_width=True):
+            st.session_state.selected_ai = "Normal"
             new_id = str(uuid.uuid4())[:8]
-            st.session_state.all_chats[new_id] = {"title": "Yeni Sohbet", "model": "Llama 3.2 3B", "messages": []}
+            st.session_state.all_chats[new_id] = {"title": "Yeni Sohbet", "model": "Normal", "messages": []}
             st.session_state.current_chat_id = new_id
             st.rerun()
 
     with col3:
-        if st.button("💡 Yaratıcı AI\n\n(Pratik Çözüm)", use_container_width=True):
-            st.session_state.selected_ai = "Yaratıcı AI"
+        if st.button("💻 Kodlama\n\n(Teknik Destek)", use_container_width=True):
+            st.session_state.selected_ai = "Kodlama"
             new_id = str(uuid.uuid4())[:8]
-            st.session_state.all_chats[new_id] = {"title": "Yeni Sohbet", "model": "Yaratıcı AI", "messages": []}
+            st.session_state.all_chats[new_id] = {"title": "Yeni Sohbet", "model": "Kodlama", "messages": []}
             st.session_state.current_chat_id = new_id
             st.rerun()
 
@@ -78,8 +78,8 @@ else:
 
     current_chat = st.session_state.all_chats[cur_id]
 
-    # Üst kısım: Aktif model ve sohbet başlığı
-    st.markdown(f"<p style='color: #4CAF50; font-weight: bold;'>🟢 {st.session_state.selected_ai} | Sohbet: {current_chat['title']}</p>", unsafe_allow_html=True)
+    # Üst kısım: Aktif mod ve sohbet başlığı
+    st.markdown(f"<p style='color: #4CAF50; font-weight: bold;'>🟢 Mod: {st.session_state.selected_ai} | Sohbet: {current_chat['title']}</p>", unsafe_allow_html=True)
     st.divider()
 
     # Mevcut sohbetin mesajlarını ekrana yazdır
@@ -106,7 +106,7 @@ else:
                 st.session_state.menu_open = False
                 st.rerun()
         with col_m2:
-            if st.button("🔄 Model Değiştir", use_container_width=True):
+            if st.button("🔄 Mod Değiştir", use_container_width=True):
                 st.session_state.selected_ai = None
                 st.session_state.current_chat_id = None
                 st.session_state.menu_open = False
@@ -136,7 +136,7 @@ else:
         uploaded_file = st.file_uploader("Fotoğraf veya Belge Seç", type=["png", "jpg", "jpeg", "pdf", "txt"], key="file_uploadi")
         if uploaded_file is not None:
             current_chat["messages"].append({"role": "user", "type": "image", "content": uploaded_file})
-            current_chat["messages"].append({"role": "assistant", "type": "text", "content": f"Görsel alındı ({uploaded_file.name}). [{st.session_state.selected_ai}] analize hazır."})
+            current_chat["messages"].append({"role": "assistant", "type": "text", "content": f"Görsel alındı ({uploaded_file.name}). [{st.session_state.selected_ai}] modu ile işleniyor."})
             st.session_state.attachment_open = False
             st.rerun()
 
@@ -153,21 +153,21 @@ else:
             st.session_state.menu_open = False
             st.rerun()
 
-    # Mesajlaşma Alanı (Seçilen modele göre özel yanıt simülasyonu)
-    if prompt := st.chat_input("Acil durum mesajınızı yazın..."):
+    # Mesajlaşma Alanı
+    if prompt := st.chat_input("Mesajınızı yazın..."):
         if current_chat["title"] == "Yeni Sohbet":
             current_chat["title"] = prompt[:22] + ("..." if len(prompt) > 22 else "")
 
         current_chat["messages"].append({"role": "user", "type": "text", "content": prompt})
         
-        # Seçilen modele göre akıllı yanıt üretimi
-        model_name = st.session_state.selected_ai
-        if "8B" in model_name:
-            response = f"🔍 **Llama 3 8B Analizi:** '{prompt}' talebiniz işlendi. Çevrimdışı veritabanı eşleştirmesi tamamlandı."
-        elif "3B" in model_name:
-            response = f"⚡ **Llama 3.2 3B Hızlı Yanıt:** '{prompt}' konusuna yönelik acil durum protokolü devrede."
+        # Seçilen moda göre özel yanıt
+        mode = st.session_state.selected_ai
+        if mode == "Internetsiz":
+            response = f"📴 **[Internetsiz Mod]:** '{prompt}' yerel veritabanında çevrimdışı işlendi."
+        elif mode == "Normal":
+            response = f"⚡ **[Normal Mod]:** '{prompt}' talebiniz hızla yanıtlandı."
         else:
-            response = f"💡 **Yaratıcı AI Önerisi:** '{prompt}' için pratik alternatifler listeleniyor."
+            response = f"💻 **[Kodlama Modu]:** '{prompt}' için teknik kod yapısı hazırlandı."
 
         current_chat["messages"].append({"role": "assistant", "type": "text", "content": response})
         st.session_state.attachment_open = False

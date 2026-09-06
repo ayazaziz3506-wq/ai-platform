@@ -15,7 +15,7 @@ st.markdown("""
     footer {visibility: hidden;}
     header {visibility: hidden;}
     .stApp { background-color: #0e1117; color: #fafafa; }
-    .block-container { padding-bottom: 5rem; }
+    .block-container { padding-bottom: 6rem; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -23,7 +23,6 @@ st.markdown("""
 if "selected_ai" not in st.session_state:
     st.session_state.selected_ai = None
 
-# Tüm sohbetleri tutacak yapı: { "chat_id": {"title": "Kodlama Sohbeti", "model": "Model 1", "messages": [...] } }
 if "all_chats" not in st.session_state:
     st.session_state.all_chats = {}
 
@@ -32,6 +31,9 @@ if "current_chat_id" not in st.session_state:
 
 if "menu_open" not in st.session_state:
     st.session_state.menu_open = False
+
+if "attachment_open" not in st.session_state:
+    st.session_state.attachment_open = False
 
 # --- 1. MODEL SEÇİM EKRANI ---
 if st.session_state.selected_ai is None:
@@ -44,7 +46,6 @@ if st.session_state.selected_ai is None:
     with col1:
         if st.button("🤖 Model 1\n\nAsistan", use_container_width=True):
             st.session_state.selected_ai = "Model 1"
-            # Yeni bir sohbet ID'si oluştur ve başlat
             new_id = str(uuid.uuid4())[:8]
             st.session_state.all_chats[new_id] = {"title": "Yeni Sohbet", "model": "Model 1", "messages": []}
             st.session_state.current_chat_id = new_id
@@ -68,10 +69,8 @@ if st.session_state.selected_ai is None:
 
 # --- 2. SOHBET EKRANI ---
 else:
-    # Aktif sohbet bilgilerini al
     cur_id = st.session_state.current_chat_id
     if cur_id not in st.session_state.all_chats:
-        # Güvenlik önlemi: Eğer sohbet silinmişse yeni oluştur
         new_id = str(uuid.uuid4())[:8]
         st.session_state.all_chats[new_id] = {"title": "Yeni Sohbet", "model": st.session_state.selected_ai, "messages": []}
         st.session_state.current_chat_id = new_id
@@ -79,27 +78,28 @@ else:
 
     current_chat = st.session_state.all_chats[cur_id]
 
-    # Üst kısım: Aktif model göstergesi
+    # Üst kısım: Aktif model ve sohbet başlığı
     st.markdown(f"<p style='color: #4CAF50; font-weight: bold;'>🟢 {st.session_state.selected_ai} | Sohbet: {current_chat['title']}</p>", unsafe_allow_html=True)
     st.divider()
 
     # Mevcut sohbetin mesajlarını ekrana yazdır
     for message in current_chat["messages"]:
         with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+            if message.get("type") == "image":
+                st.image(message["content"], caption="Yüklenen Görsel", use_container_width=True)
+            else:
+                st.markdown(message["content"])
 
-    # Menü Açıldığında Çıkacak Alan (Geçmiş sohbetler, yeni sohbet, model değiştir)
+    # ☰ Menü Açıldığında Çıkacak Alan (Geçmiş Sohbetler, Yeni Sohbet vb.)
     if st.session_state.menu_open:
         st.markdown("""
             <div style="background-color: #16192b; padding: 15px; border-radius: 10px; border: 1px solid #262d3d; margin-bottom: 10px;">
             <p style="color: #4CAF50; font-weight: bold; margin-bottom: 10px;">⚙️ Kontrol Paneli</p>
         """, unsafe_allow_html=True)
         
-        # İşlem Butonları
         col_m1, col_m2 = st.columns(2)
         with col_m1:
             if st.button("➕ Yeni Sohbet", use_container_width=True):
-                # Yeni bir sohbet ID'si üret ve aktif yap
                 new_id = str(uuid.uuid4())[:8]
                 st.session_state.all_chats[new_id] = {"title": "Yeni Sohbet", "model": st.session_state.selected_ai, "messages": []}
                 st.session_state.current_chat_id = new_id
@@ -115,7 +115,6 @@ else:
         st.markdown("<hr style='margin: 15px 0; border-color: #262d3d;'>", unsafe_allow_html=True)
         st.markdown("<b style='color: #fafafa;'>📜 Geçmiş Sohbetler</b>", unsafe_allow_html=True)
         
-        # Tüm geçmiş sohbetleri listele ve üzerine tıklayınca o sohbete geri dön
         for chat_id, chat_data in list(st.session_state.all_chats.items()):
             active_mark = "👉 " if chat_id == cur_id else ""
             if st.button(f"{active_mark}{chat_data['title']} ({chat_data['model']})", key=f"chat_btn_{chat_id}", use_container_width=True):
@@ -126,26 +125,44 @@ else:
                 
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # Mesaj Kutusunun Hemen Üstündeki ☰ Menü Butonu
-    if st.button("☰ Menü", use_container_width=True):
-        st.session_state.menu_open = not st.session_state.menu_open
-        st.rerun()
+    # ➕ Artı Butonuna Basıldığında Açılan Dosya/Fotoğraf Menüsü (Attığın fotoğraftaki gibi!)
+    if st.session_state.attachment_open:
+        st.markdown("""
+            <div style="background-color: #16192b; padding: 12px; border-radius: 10px; border: 1px solid #262d3d; margin-bottom: 5px;">
+            <p style="color: #38bdf8; font-weight: bold; font-size: 14px; margin-bottom: 8px;">📎 Medya ve Dosya Ekle</p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        uploaded_file = st.file_uploader("Fotoğraf veya Belge Seç", type=["png", "jpg", "jpeg", "pdf", "txt"], key="file_uploadi")
+        if uploaded_file is not None:
+            # Dosyayı mesaja ekle
+            current_chat["messages"].append({"role": "user", "type": "image", "content": uploaded_file})
+            current_chat["messages"].append({"role": "assistant", "type": "text", "content": f"Dosyanı aldım! ({uploaded_file.name}) Harika görünüyor, bununla ilgili ne yapmak istersin?"})
+            st.session_state.attachment_open = False
+            st.rerun()
+
+    # Mesaj Kutusunun Hemen Üstündeki Butonlar: [ ☰ Menü ] ve [ ➕ Ekle ]
+    col_btn_menu, col_btn_plus = st.columns([4, 1])
+    with col_btn_menu:
+        if st.button("☰ Menü", use_container_width=True):
+            st.session_state.menu_open = not st.session_state.menu_open
+            st.session_state.attachment_open = False
+            st.rerun()
+    with col_btn_plus:
+        if st.button("➕", use_container_width=True):
+            st.session_state.attachment_open = not st.session_state.attachment_open
+            st.session_state.menu_open = False
+            st.rerun()
 
     # Mesaj giriş alanı (En altta sabit)
     if prompt := st.chat_input("Mesajınızı yazın..."):
-        # Eğer bu ilk mesajsa, sohbet başlığını kullanıcının yazdığı ilk kelimelere göre güncelle
         if current_chat["title"] == "Yeni Sohbet":
             current_chat["title"] = prompt[:22] + ("..." if len(prompt) > 22 else "")
 
-        # Kullanıcı mesajını kaydet
-        current_chat["messages"].append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
-        # Yapay zeka yanıtı
+        current_chat["messages"].append({"role": "user", "type": "text", "content": prompt})
+        
         response = f"{st.session_state.selected_ai} yanıtı: {prompt}"
-        current_chat["messages"].append({"role": "assistant", "content": response})
-        with st.chat_message("assistant"):
-            st.markdown(response)
+        current_chat["messages"].append({"role": "assistant", "type": "text", "content": response})
+        st.session_state.attachment_open = False
         st.rerun()
         

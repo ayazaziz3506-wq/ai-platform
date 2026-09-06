@@ -7,32 +7,13 @@ st.set_page_config(
     layout="centered"
 )
 
-# İstediğin gibi sol üstte sabit kalan, aşağı kaydırsan bile bizimle gelen 3 çizgi menü tasarımı
+# Arayüzü sadeleştiren ve butonların görünümünü düzenleyen stiller
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     .stApp { background-color: #0e1117; color: #fafafa; }
-
-    /* Sol üstteki yeşil kutucuğun olduğu yere sabitlenen 3 çizgi butonu */
-    .floating-menu-btn {
-        position: fixed;
-        top: 15px;
-        left: 15px;
-        z-index: 99999;
-        background-color: #1f2937;
-        color: #ffffff;
-        border: 1px solid #374151;
-        padding: 8px 12px;
-        border-radius: 8px;
-        font-size: 18px;
-        cursor: pointer;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    }
-    .floating-menu-btn:hover {
-        background-color: #374151;
-    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -71,18 +52,12 @@ if st.session_state.selected_ai is None:
 
 # --- 2. SOHBET EKRANI ---
 else:
-    # Sol üstteki yeşil alana denk gelen sabit ☰ butonu tetikleyicisi
-    if st.button("☰", key="menu_toggle"):
-        st.session_state.menu_open = not st.session_state.menu_open
-        st.rerun()
-
-    # 3 Çizgiye basıldığında açılan panel (İçinde Yeni, Değiş ve Geçmiş var)
+    # 3 Çizgiye basıldığında açılan yan menü (İçinde Yeni, Değiş ve Geçmiş var)
     if st.session_state.menu_open:
         with st.sidebar:
             st.markdown(f"### 🟢 {st.session_state.selected_ai}")
             st.divider()
             
-            # İstediğin butonlar menünün içinde!
             if st.button("➕ Yeni Sohbet", use_container_width=True):
                 st.session_state.chats[st.session_state.selected_ai] = []
                 st.session_state.menu_open = False
@@ -104,15 +79,25 @@ else:
                     st.text(f"{icon} {msg['content'][:22]}...")
 
     # Sohbet içeriği ve mesajlar
-    st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
-    
     current_messages = st.session_state.chats[st.session_state.selected_ai]
     for message in current_messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # Mesaj giriş alanı
-    if prompt := st.chat_input("Mesajınızı yazın..."):
+    # Pratik Çözüm: Alt alta iki sütun koyuyoruz. 
+    # Biri 3 çizgi menü butonu, diğeri mesaj yazma alanı!
+    c_btn, c_input = st.columns([1, 6])
+    
+    with c_btn:
+        # Menü butonu aşağıda, mesaj çubuğunun hemen yanında duracak ve hep seninle gelecek!
+        if st.button("☰", use_container_width=True, key="bottom_menu_btn"):
+            st.session_state.menu_open = not st.session_state.menu_open
+            st.rerun()
+
+    with c_input:
+        prompt = st.chat_input("Mesajınızı yazın...")
+
+    if prompt:
         current_messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
@@ -121,4 +106,5 @@ else:
         current_messages.append({"role": "assistant", "content": response})
         with st.chat_message("assistant"):
             st.markdown(response)
-            
+        st.rerun()
+        

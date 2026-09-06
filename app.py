@@ -7,30 +7,31 @@ st.set_page_config(
     layout="centered"
 )
 
-# Arayüzü gizleyen ve üst barı sabitleyen şık stiller
+# İstediğin gibi sol üstte sabit kalan, aşağı kaydırsan bile bizimle gelen 3 çizgi menü tasarımı
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     .stApp { background-color: #0e1117; color: #fafafa; }
-    
-    /* En üstte sabit kalan modern bar */
-    .top-bar {
+
+    /* Sol üstteki yeşil kutucuğun olduğu yere sabitlenen 3 çizgi butonu */
+    .floating-menu-btn {
         position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        background-color: #0e1117;
-        padding: 10px 15px;
-        z-index: 999;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid #262d3d;
+        top: 15px;
+        left: 15px;
+        z-index: 99999;
+        background-color: #1f2937;
+        color: #ffffff;
+        border: 1px solid #374151;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 18px;
+        cursor: pointer;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
-    .content-spacer {
-        margin-top: 60px;
+    .floating-menu-btn:hover {
+        background-color: #374151;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -42,23 +43,8 @@ if "selected_ai" not in st.session_state:
 if "chats" not in st.session_state:
     st.session_state.chats = {"Model 1": [], "Model 2": [], "Model 3": []}
 
-if "sidebar_open" not in st.session_state:
-    st.session_state.sidebar_open = False
-
-# --- SOL MENÜ (3 Çizgiye Basınca Açılan Geçmiş) ---
-if st.session_state.sidebar_open:
-    with st.sidebar:
-        st.markdown("### 📜 Sohbet Geçmişi")
-        if st.session_state.selected_ai:
-            messages = st.session_state.chats.get(st.session_state.selected_ai, [])
-            if not messages:
-                st.write("Henüz mesaj yok.")
-            else:
-                for msg in messages:
-                    icon = "👤" if msg["role"] == "user" else "🤖"
-                    st.text(f"{icon} {msg['content'][:20]}...")
-        else:
-            st.write("Model seçilmedi.")
+if "menu_open" not in st.session_state:
+    st.session_state.menu_open = False
 
 # --- 1. MODEL SEÇİM EKRANI ---
 if st.session_state.selected_ai is None:
@@ -83,32 +69,43 @@ if st.session_state.selected_ai is None:
             st.session_state.selected_ai = "Model 3"
             st.rerun()
 
-# --- 2. SOHBET EKRANI (Sabit Üst Bar & Yan Yana Butonlar) ---
+# --- 2. SOHBET EKRANI ---
 else:
-    # Üst kısım: Sol üstte 3 çizgi (menü), ortada model adı, sağda Yeni (+) ve Değiş butonları
-    col_menu, col_title, col_new, col_change = st.columns([0.6, 1.4, 1, 1])
+    # Sol üstteki yeşil alana denk gelen sabit ☰ butonu tetikleyicisi
+    if st.button("☰", key="menu_toggle"):
+        st.session_state.menu_open = not st.session_state.menu_open
+        st.rerun()
+
+    # 3 Çizgiye basıldığında açılan panel (İçinde Yeni, Değiş ve Geçmiş var)
+    if st.session_state.menu_open:
+        with st.sidebar:
+            st.markdown(f"### 🟢 {st.session_state.selected_ai}")
+            st.divider()
+            
+            # İstediğin butonlar menünün içinde!
+            if st.button("➕ Yeni Sohbet", use_container_width=True):
+                st.session_state.chats[st.session_state.selected_ai] = []
+                st.session_state.menu_open = False
+                st.rerun()
+                
+            if st.button("🔄 Modeli Değiştir", use_container_width=True):
+                st.session_state.selected_ai = None
+                st.session_state.menu_open = False
+                st.rerun()
+
+            st.divider()
+            st.markdown("#### 📜 Sohbet Geçmişi")
+            messages = st.session_state.chats.get(st.session_state.selected_ai, [])
+            if not messages:
+                st.write("Henüz mesaj yok.")
+            else:
+                for msg in messages:
+                    icon = "👤" if msg["role"] == "user" else "🤖"
+                    st.text(f"{icon} {msg['content'][:22]}...")
+
+    # Sohbet içeriği ve mesajlar
+    st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
     
-    with col_menu:
-        if st.button("☰", use_container_width=True):
-            st.session_state.sidebar_open = not st.session_state.sidebar_open
-            st.rerun()
-            
-    with col_title:
-        st.markdown(f"<p style='color: #4CAF50; font-weight: bold; margin-top: 8px;'>🟢 {st.session_state.selected_ai}</p>", unsafe_allow_html=True)
-        
-    with col_new:
-        if st.button("➕ Yeni", use_container_width=True):
-            st.session_state.chats[st.session_state.selected_ai] = []
-            st.rerun()
-            
-    with col_change:
-        if st.button("🔄 Değiş", use_container_width=True):
-            st.session_state.selected_ai = None
-            st.rerun()
-
-    st.markdown("<div class='content-spacer'></div>", unsafe_allow_html=True)
-
-    # Mesajları listeleme
     current_messages = st.session_state.chats[st.session_state.selected_ai]
     for message in current_messages:
         with st.chat_message(message["role"]):

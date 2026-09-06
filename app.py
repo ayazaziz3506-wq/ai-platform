@@ -7,13 +7,18 @@ st.set_page_config(
     layout="centered"
 )
 
-# Arayüzü sadeleştiren stiller
+# Arayüzü sadeleştiren ve butonun yerini sabitleyen stiller
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     .stApp { background-color: #0e1117; color: #fafafa; }
+    
+    /* İçeriklerin aşağı kaymasını ve butonun altta kalmasını sağlayan düzen */
+    .block-container {
+        padding-bottom: 5rem;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -42,6 +47,7 @@ if st.session_state.selected_ai is None:
 
     with col2:
         if st.button("⚡ Model 2\n\nHızlı AI", use_container_width=True):
+            st.session_state.selected_ai = "Model B" # typo fix
             st.session_state.selected_ai = "Model 2"
             st.rerun()
 
@@ -62,16 +68,18 @@ else:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # İSTEDİĞİN YER: 3 Çizgi menü butonu doğrudan mesaj kutusunun hemen üstünde
-    if st.button("☰ Menü", use_container_width=True):
-        st.session_state.menu_open = not st.session_state.menu_open
-        st.rerun()
-
-    # Menü açıksa içeriği göster
+    # Menü açıkse panel içeriği
     if st.session_state.menu_open:
-        st.info("Menü açık (Yeni sohbet, model değiştir ve geçmiş buraya gelecek)")
+        st.info("Menü Açık: Yeni sohbet, model değiştir ve geçmiş burada olacak.")
 
-    # Mesaj giriş alanı (en altta sabit)
+    # SAYFANIN EN ALTI: Mesaj kutusunun hemen üstüne sabitlenen menü butonu ve giriş alanı
+    menu_container = st.container()
+    with menu_container:
+        if st.button("☰ Menü", use_container_width=True):
+            st.session_state.menu_open = not st.session_state.menu_open
+            st.rerun()
+
+    # Mesaj giriş alanı (En altta)
     if prompt := st.chat_input("Mesajınızı yazın..."):
         current_messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):

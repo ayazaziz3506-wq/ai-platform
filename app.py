@@ -7,7 +7,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Arayüzü sadeleştiren ve butonların görünümünü düzenleyen stiller
+# Arayüzü sadeleştiren ve butonların düzgün durmasını sağlayan stiller
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -52,6 +52,17 @@ if st.session_state.selected_ai is None:
 
 # --- 2. SOHBET EKRANI ---
 else:
+    # Üst kısım: Sol tarafta aktif model, sağ tarafta sorunsuz çalışan 3 çizgi (☰) menü butonu
+    col_info, col_menu_btn = st.columns([3, 1])
+    
+    with col_info:
+        st.markdown(f"<p style='color: #4CAF50; font-weight: bold; margin-top: 10px;'>🟢 {st.session_state.selected_ai}</p>", unsafe_allow_html=True)
+    
+    with col_menu_btn:
+        if st.button("☰ Menü", use_container_width=True):
+            st.session_state.menu_open = not st.session_state.menu_open
+            st.rerun()
+
     # 3 Çizgiye basıldığında açılan yan menü (İçinde Yeni, Değiş ve Geçmiş var)
     if st.session_state.menu_open:
         with st.sidebar:
@@ -78,26 +89,16 @@ else:
                     icon = "👤" if msg["role"] == "user" else "🤖"
                     st.text(f"{icon} {msg['content'][:22]}...")
 
-    # Sohbet içeriği ve mesajlar
+    st.divider()
+
+    # Sohbet mesajları listesi
     current_messages = st.session_state.chats[st.session_state.selected_ai]
     for message in current_messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # Pratik Çözüm: Alt alta iki sütun koyuyoruz. 
-    # Biri 3 çizgi menü butonu, diğeri mesaj yazma alanı!
-    c_btn, c_input = st.columns([1, 6])
-    
-    with c_btn:
-        # Menü butonu aşağıda, mesaj çubuğunun hemen yanında duracak ve hep seninle gelecek!
-        if st.button("☰", use_container_width=True, key="bottom_menu_btn"):
-            st.session_state.menu_open = not st.session_state.menu_open
-            st.rerun()
-
-    with c_input:
-        prompt = st.chat_input("Mesajınızı yazın...")
-
-    if prompt:
+    # Mesaj giriş alanı
+    if prompt := st.chat_input("Mesajınızı yazın..."):
         current_messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)

@@ -7,7 +7,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Arayüzü sadeleştiren ve butonların düzgün durmasını sağlayan stiller
+# Arayüzü sadeleştiren stiller
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -52,17 +52,6 @@ if st.session_state.selected_ai is None:
 
 # --- 2. SOHBET EKRANI ---
 else:
-    # Üst kısım: Sol tarafta aktif model, sağ tarafta sorunsuz çalışan 3 çizgi (☰) menü butonu
-    col_info, col_menu_btn = st.columns([3, 1])
-    
-    with col_info:
-        st.markdown(f"<p style='color: #4CAF50; font-weight: bold; margin-top: 10px;'>🟢 {st.session_state.selected_ai}</p>", unsafe_allow_html=True)
-    
-    with col_menu_btn:
-        if st.button("☰ Menü", use_container_width=True):
-            st.session_state.menu_open = not st.session_state.menu_open
-            st.rerun()
-
     # 3 Çizgiye basıldığında açılan yan menü (İçinde Yeni, Değiş ve Geçmiş var)
     if st.session_state.menu_open:
         with st.sidebar:
@@ -89,6 +78,8 @@ else:
                     icon = "👤" if msg["role"] == "user" else "🤖"
                     st.text(f"{icon} {msg['content'][:22]}...")
 
+    # Aktif model göstergesi
+    st.markdown(f"<p style='color: #4CAF50; font-weight: bold;'>🟢 {st.session_state.selected_ai}</p>", unsafe_allow_html=True)
     st.divider()
 
     # Sohbet mesajları listesi
@@ -96,6 +87,13 @@ else:
     for message in current_messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
+
+    # İstediğin gibi: Mesaj yazma yerinin hemen üstünde veya yanında çalışan 3 çizgi butonu
+    col_btn, col_empty = st.columns([1, 5])
+    with col_btn:
+        if st.button("☰ Menü", use_container_width=True, key="trigger_menu"):
+            st.session_state.menu_open = not st.session_state.menu_open
+            st.rerun()
 
     # Mesaj giriş alanı
     if prompt := st.chat_input("Mesajınızı yazın..."):

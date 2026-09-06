@@ -1,5 +1,7 @@
 import streamlit as st
 import uuid
+import os
+from groq import Groq
 
 # Sayfa ayarları
 st.set_page_config(
@@ -153,21 +155,42 @@ else:
             st.session_state.menu_open = False
             st.rerun()
 
-    # Mesajlaşma Alanı
+    # Mesajlaşma Alanı (Gerçek Yapay Zeka Entegrasyonu)
     if prompt := st.chat_input("Mesajınızı yazın..."):
         if current_chat["title"] == "Yeni Sohbet":
             current_chat["title"] = prompt[:22] + ("..." if len(prompt) > 22 else "")
 
         current_chat["messages"].append({"role": "user", "type": "text", "content": prompt})
         
-        # Seçilen moda göre özel yanıt
         mode = st.session_state.selected_ai
+        response = ""
+
         if mode == "Internetsiz":
-            response = f"📴 **[Internetsiz Mod]:** '{prompt}' yerel veritabanında çevrimdışı işlendi."
-        elif mode == "Normal":
-            response = f"⚡ **[Normal Mod]:** '{prompt}' talebiniz hızla yanıtlandı."
+            # Internetsiz mod için çevrimdışı yerel yanıt simülasyonu
+            response = f"📴 **[Internetsiz (Offline) Mod]:** '{prompt}' yerel önbellek üzerinden işlendi. İnternet bağlantısı gerektirmez."
         else:
-            response = f"💻 **[Kodlama Modu]:** '{prompt}' için teknik kod yapısı hazırlandı."
+            try:
+                # Groq API üzerinden gerçek model bağlantısı (Normal veya Kodlama modu)
+                api_key = st.secrets.get("GROQ_API_KEY", "")
+                if not api_key:
+                    response = "⚠️ Hata: Streamlit Secrets içerisine GROQ_API_KEY eklenmemiş!"
+                else:
+                    client = Groq(api_key=api_key)
+                    
+                    # Modlara göre model seçimi
+                    model_to_use = "llama3-8b-8192" if mode == "Normal" else "llama3-70b-8192"
+                    system_prompt = "Sen acil durumlar için yardımcı bir asistansın." if mode == "Normal" else "Sen profesyonel bir yazılım ve kodlama uzmanısın."
+
+                    chat_completion = client.chat.completions.create(
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": prompt}
+                        ],
+                        model=model_to_use,
+                    )
+                    response = chat_completion.choices[0].message.content
+            except Exception as e:
+                response = f"Bağlantı hatası oluştu: {str(e)}"
 
         current_chat["messages"].append({"role": "assistant", "type": "text", "content": response})
         st.session_state.attachment_open = False

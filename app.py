@@ -28,13 +28,26 @@ if groq_api_key:
     except Exception as e:
         pass
 
-# Oturum geçmişi (Sohbet hafızası)
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+# Oturum geçmişi ve sohbet listesi yönetimi
+if "current_chat_id" not in st.session_state:
+    st.session_state.current_chat_id = "sohbet_1"
+
+if "all_chats" not in st.session_state:
+    st.session_state.all_chats = {
+        "sohbet_1": {"title": "Yeni Sohbet", "messages": []}
+    }
 
 # Üst Menü / Kenar Çubuğu
 with st.sidebar:
     st.title("⚙️ Menü")
+    
+    if st.button("➕ Yeni Sohbet Başlat", use_container_width=True):
+        new_id = f"sohbet_{len(st.session_state.all_chats) + 1}"
+        st.session_state.all_chats[new_id] = {"title": "Yeni Sohbet", "messages": []}
+        st.session_state.current_chat_id = new_id
+        st.rerun()
+        
+    st.markdown("---")
     
     # Mod seçimi
     st.subheader("🔄 Mod Seçimi")
@@ -45,9 +58,21 @@ with st.sidebar:
     )
     
     st.markdown("---")
-    if st.button("🧹 Sohbeti Temizle"):
-        st.session_state.messages = []
+    
+    # Geçmiş sohbetleri listeleme
+    st.subheader("💬 Sohbet Geçmişi")
+    for chat_id, chat_data in list(st.session_state.all_chats.items()):
+        if st.button(chat_data["title"], key=f"btn_{chat_id}", use_container_width=True):
+            st.session_state.current_chat_id = chat_id
+            st.rerun()
+            
+    st.markdown("---")
+    if st.button("🧹 Sohbeti Temizle", use_container_width=True):
+        st.session_state.all_chats[st.session_state.current_chat_id]["messages"] = []
         st.rerun()
+
+# Aktif sohbetin mesajlarına erişim
+current_chat = st.session_state.all_chats[st.session_state.current_chat_id]
 
 # Ana Ekran Başlığı
 if mode == "Internetsiz (Offline)":
@@ -55,19 +80,23 @@ if mode == "Internetsiz (Offline)":
 elif mode == "Normal":
     st.info("⚡ Mod: Normal (Llama 3.1 - 8B)")
 else:
-    st.warning("💻 Mod: Kodlama (Llama 3.3 - 70B)")
+    st.warning("💻 Mod: Kodlama (Llama 3.1 - 8B)")
 
 st.markdown("---")
 
 # Geçmiş mesajları ekrana yazdır
-for message in st.session_state.messages:
+for message in current_chat["messages"]:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
 # Kullanıcıdan girdi al
 if prompt := st.chat_input("Mesajınızı yazın..."):
+    # Eğer ilk mesajsa sohbet başlığını güncelle
+    if len(current_chat["messages"]) == 0:
+        current_chat["title"] = prompt[:20] + ("..." if len(prompt) > 20 else "")
+        
     # Kullanıcı mesajını ekle
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    current_chat["messages"].append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
@@ -85,17 +114,14 @@ if prompt := st.chat_input("Mesajınızı yazın..."):
             
         else:
             try:
-                # Modlara göre güncel Groq modelleri
-                if mode == "Normal":
-                    model_name = "llama-3.1-8b-instant"
-                else:
-                    model_name = "llama-3.3-70b-versatile"
+                # Tüm modlar için en kararlı ve hızlı güncel model
+                model_name = "llama-3.1-8b-instant"
                 
                 # API çağrısı
                 chat_completion = client.chat.completions.create(
                     messages=[
                         {"role": m["role"], "content": m["content"]}
-                        for m in st.session_state.messages
+                        for m in current_chat["messages"]
                     ],
                     model=model_name,
                 )
@@ -107,5 +133,5 @@ if prompt := st.chat_input("Mesajınızı yazın..."):
                 st.error(response_content)
         
         # Asistan yanıtını hafızaya kaydet
-        st.session_state.messages.append({"role": "assistant", "content": response_content})
+        current_chat["messages"].append({"role": "assistant", "content": response_content})
         

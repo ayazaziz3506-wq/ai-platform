@@ -37,7 +37,7 @@ if "all_chats" not in st.session_state:
         "sohbet_1": {"title": "Yeni Sohbet", "messages": []}
     }
 
-# Üst Menü / Kenar Çubuğu
+# Üst Menü / Kenar Çubuğu (Artı butonu ve dosya yükleme burada)
 with st.sidebar:
     st.title("⚙️ Menü")
     
@@ -47,6 +47,12 @@ with st.sidebar:
         st.session_state.current_chat_id = new_id
         st.rerun()
         
+    st.markdown("---")
+    
+    # Dosya / Kod / Fotoğraf yükleme alanı sol menüye alındı
+    st.subheader("📎 Dosya Yükleme")
+    uploaded_file = st.file_uploader("Dosya veya Kod Seç", type=["png", "jpg", "jpeg", "txt", "html", "py", "pdf"])
+    
     st.markdown("---")
     
     # Mod seçimi
@@ -84,9 +90,6 @@ else:
 
 st.markdown("---")
 
-# Dosya/Fotoğraf yükleme alanı (Artı / Dosya ekleme özelliği için)
-uploaded_file = st.file_uploader("📎 Dosya veya Fotoğraf Yükle", type=["png", "jpg", "jpeg", "txt", "pdf"])
-
 # Geçmiş mesajları ekrana yazdır
 for message in current_chat["messages"]:
     with st.chat_message(message["role"]):
@@ -96,10 +99,17 @@ for message in current_chat["messages"]:
 prompt = st.chat_input("Mesajınızı yazın...")
 
 if prompt or uploaded_file:
-    # Kullanıcının gönderdiği metni ve dosya bilgisini düzenle
     user_message = prompt if prompt else ""
+    
+    # Eğer dosya yüklendiyse içeriğini okumaya çalış veya adını ekle
+    file_content_text = ""
     if uploaded_file is not None:
-        user_message += f"\n\n*(Eklenen dosya: {uploaded_file.name})*"
+        try:
+            # Metin bazlı dosyaları (html, txt, py vb.) doğrudan okuyabilir
+            file_content_text = uploaded_file.read().decode("utf-8", errors="ignore")
+            user_message += f"\n\n--- Yüklenen Dosya ({uploaded_file.name}) ---\n```\n{file_content_text[:3000]}\n```"
+        except Exception:
+            user_message += f"\n\n*(Eklenen dosya: {uploaded_file.name})*"
     
     # Eğer ilk mesajsa sohbet başlığını güncelle
     if len(current_chat["messages"]) == 0 and prompt:
@@ -117,7 +127,7 @@ if prompt or uploaded_file:
         response_content = ""
         
         if mode == "Internetsiz (Offline)":
-            response_content = f"[Internetsiz (Offline) Mod]: Mesajınız ve dosyanız yerel olarak alındı."
+            response_content = f"[Internetsiz (Offline) Mod]: Mesajınız ve dosyanız yerel olarak işleme alındı."
             st.markdown(response_content)
             
         elif client is None:

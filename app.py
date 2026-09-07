@@ -78,9 +78,9 @@ current_chat = st.session_state.all_chats[st.session_state.current_chat_id]
 if mode == "Internetsiz (Offline)":
     st.success("🟢 Mod: Internetsiz | Yerel mod aktif.")
 elif mode == "Normal":
-    st.info("⚡ Mod: Normal (Llama 3.1 8B)")
+    st.info("⚡ Mod: Normal (Llama 3.1)")
 else:
-    st.warning("💻 Mod: Kodlama (Llama 3.3 70B)")
+    st.warning("💻 Mod: Kodlama (Llama 3.1)")
 
 st.markdown("---")
 
@@ -114,11 +114,8 @@ if prompt := st.chat_input("Mesajınızı yazın..."):
             
         else:
             try:
-                # Moda göre güncel ve aktif modeller
-                if mode == "Normal":
-                    model_name = "llama-3.1-8b-instant"
-                else:
-                    model_name = "llama-3.3-70b-versatile"
+                # Kesin olarak çalışan ve desteklenen model
+                model_name = "llama-3.1-8b-instant"
                 
                 # API çağrısı
                 chat_completion = client.chat.completions.create(

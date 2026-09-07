@@ -84,40 +84,50 @@ else:
 
 st.markdown("---")
 
+# Dosya/Fotoğraf yükleme alanı (Artı / Dosya ekleme özelliği için)
+uploaded_file = st.file_uploader("📎 Dosya veya Fotoğraf Yükle", type=["png", "jpg", "jpeg", "txt", "pdf"])
+
 # Geçmiş mesajları ekrana yazdır
 for message in current_chat["messages"]:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
 # Kullanıcıdan girdi al
-if prompt := st.chat_input("Mesajınızı yazın..."):
+prompt = st.chat_input("Mesajınızı yazın...")
+
+if prompt or uploaded_file:
+    # Kullanıcının gönderdiği metni ve dosya bilgisini düzenle
+    user_message = prompt if prompt else ""
+    if uploaded_file is not None:
+        user_message += f"\n\n*(Eklenen dosya: {uploaded_file.name})*"
+    
     # Eğer ilk mesajsa sohbet başlığını güncelle
-    if len(current_chat["messages"]) == 0:
+    if len(current_chat["messages"]) == 0 and prompt:
         current_chat["title"] = prompt[:20] + ("..." if len(prompt) > 20 else "")
+    elif len(current_chat["messages"]) == 0 and uploaded_file:
+        current_chat["title"] = f"Dosya: {uploaded_file.name[:10]}"
         
     # Kullanıcı mesajını ekle
-    current_chat["messages"].append({"role": "user", "content": prompt})
+    current_chat["messages"].append({"role": "user", "content": user_message})
     with st.chat_message("user"):
-        st.markdown(prompt)
+        st.markdown(user_message)
 
     # Asistan yanıtı
     with st.chat_message("assistant"):
         response_content = ""
         
         if mode == "Internetsiz (Offline)":
-            response_content = f"[Internetsiz (Offline) Mod]: '{prompt}' yerel önbellek üzerinden işlendi. İnternet bağlantısı gerektirmez."
+            response_content = f"[Internetsiz (Offline) Mod]: Mesajınız ve dosyanız yerel olarak alındı."
             st.markdown(response_content)
             
         elif client is None:
-            response_content = "⚠️ Groq API anahtarı bulunamadı veya geçersiz! Lütfen Streamlit Secrets ayarlarına geçerli bir API anahtarı ekleyin."
+            response_content = "⚠️ Groq API anahtarı bulunamadı veya geçersiz!"
             st.error(response_content)
             
         else:
             try:
-                # Kesin olarak çalışan güncel ana model
                 model_name = "openai/gpt-oss-20b"
                 
-                # API çağrısı
                 chat_completion = client.chat.completions.create(
                     messages=[
                         {"role": m["role"], "content": m["content"]}

@@ -78,9 +78,9 @@ current_chat = st.session_state.all_chats[st.session_state.current_chat_id]
 if mode == "Internetsiz (Offline)":
     st.success("🟢 Mod: Internetsiz | Yerel mod aktif.")
 elif mode == "Normal":
-    st.info("⚡ Mod: Normal (Llama 3.1)")
+    st.info("⚡ Mod: Normal (GPT OSS)")
 else:
-    st.warning("💻 Mod: Kodlama (Llama 3.1)")
+    st.warning("💻 Mod: Kodlama (GPT OSS)")
 
 st.markdown("---")
 
@@ -114,8 +114,8 @@ if prompt := st.chat_input("Mesajınızı yazın..."):
             
         else:
             try:
-                # Kesin olarak çalışan ve desteklenen model
-                model_name = "llama-3.1-8b-instant"
+                # Kesin olarak çalışan güncel ana model
+                model_name = "openai/gpt-oss-20b"
                 
                 # API çağrısı
                 chat_completion = client.chat.completions.create(

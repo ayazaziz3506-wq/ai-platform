@@ -1,198 +1,111 @@
 import streamlit as st
-import uuid
 import os
-from groq import Groq
 
-# Sayfa ayarları
+# Sayfa yapılandırması (Mobil uyumlu ve sade)
 st.set_page_config(
-    page_title="Acil Durum AI Platformu",
-    page_icon="🚨",
+    page_title="Yapay Zeka Platformu",
+    page_icon="🤖",
     layout="centered"
 )
 
-# Arayüzü sadeleştiren stiller
-st.markdown("""
-    <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    .stApp { background-color: #0e1117; color: #fafafa; }
-    .block-container { padding-bottom: 6rem; }
-    </style>
-""", unsafe_allow_html=True)
+# Groq API anahtarını kontrol et
+groq_api_key = None
+try:
+    if "GROQ_API_KEY" in st.secrets:
+        groq_api_key = st.secrets["GROQ_API_KEY"]
+except Exception:
+    pass
 
-# Oturum hafızası yönetimi
-if "selected_ai" not in st.session_state:
-    st.session_state.selected_ai = None
+if not groq_api_key:
+    groq_api_key = os.getenv("GROQ_API_KEY")
 
-if "all_chats" not in st.session_state:
-    st.session_state.all_chats = {}
+# Groq kütüphanesini yüklemeyi dene
+client = None
+if groq_api_key:
+    try:
+        from groq import Groq
+        client = Groq(api_key=groq_api_key)
+    except Exception as e:
+        pass
 
-if "current_chat_id" not in st.session_state:
-    st.session_state.current_chat_id = None
+# Oturum geçmişi (Sohbet hafızası)
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-if "menu_open" not in st.session_state:
-    st.session_state.menu_open = False
-
-if "attachment_open" not in st.session_state:
-    st.session_state.attachment_open = False
-
-# --- 1. MODEL SEÇİM EKRANI ---
-if st.session_state.selected_ai is None:
-    st.markdown("<h2 style='text-align: center; color: #fff; margin-top: 50px;'>Mod Seçimi</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: gray; font-size: 14px;'>İhtiyacınıza uygun modu seçin</p>", unsafe_allow_html=True)
+# Üst Menü / Kenar Çubuğu
+with st.sidebar:
+    st.title("⚙️ Menü")
     
-    st.write("")
-    col1, col2, col3 = st.columns(3)
+    # Mod seçimi
+    st.subheader("🔄 Mod Seçimi")
+    mode = st.radio(
+        "Çalışma Modu:",
+        ["Internetsiz (Offline)", "Normal", "Kodlama"],
+        index=0
+    )
+    
+    st.markdown("---")
+    if st.button("🧹 Sohbeti Temizle"):
+        st.session_state.messages = []
+        st.rerun()
 
-    with col1:
-        if st.button("📴 Internetsiz\n\n(Offline Mod)", use_container_width=True):
-            st.session_state.selected_ai = "Internetsiz"
-            new_id = str(uuid.uuid4())[:8]
-            st.session_state.all_chats[new_id] = {"title": "Yeni Sohbet", "model": "Internetsiz", "messages": []}
-            st.session_state.current_chat_id = new_id
-            st.rerun()
-
-    with col2:
-        if st.button("⚡ Normal\n\n(Günlük Kullanım)", use_container_width=True):
-            st.session_state.selected_ai = "Normal"
-            new_id = str(uuid.uuid4())[:8]
-            st.session_state.all_chats[new_id] = {"title": "Yeni Sohbet", "model": "Normal", "messages": []}
-            st.session_state.current_chat_id = new_id
-            st.rerun()
-
-    with col3:
-        if st.button("💻 Kodlama\n\n(Teknik Destek)", use_container_width=True):
-            st.session_state.selected_ai = "Kodlama"
-            new_id = str(uuid.uuid4())[:8]
-            st.session_state.all_chats[new_id] = {"title": "Yeni Sohbet", "model": "Kodlama", "messages": []}
-            st.session_state.current_chat_id = new_id
-            st.rerun()
-
-# --- 2. SOHBET EKRANI ---
+# Ana Ekran Başlığı
+if mode == "Internetsiz (Offline)":
+    st.success("🟢 Mod: Internetsiz | Yerel mod aktif.")
+elif mode == "Normal":
+    st.info("⚡ Mod: Normal (Llama 3.1 - 8B)")
 else:
-    cur_id = st.session_state.current_chat_id
-    if cur_id not in st.session_state.all_chats:
-        new_id = str(uuid.uuid4())[:8]
-        st.session_state.all_chats[new_id] = {"title": "Yeni Sohbet", "model": st.session_state.selected_ai, "messages": []}
-        st.session_state.current_chat_id = new_id
-        cur_id = new_id
+    st.warning("💻 Mod: Kodlama (Llama 3.3 - 70B)")
 
-    current_chat = st.session_state.all_chats[cur_id]
+st.markdown("---")
 
-    # Üst kısım: Aktif mod ve sohbet başlığı
-    st.markdown(f"<p style='color: #4CAF50; font-weight: bold;'>🟢 Mod: {st.session_state.selected_ai} | Sohbet: {current_chat['title']}</p>", unsafe_allow_html=True)
-    st.divider()
+# Geçmiş mesajları ekrana yazdır
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
-    # Mevcut sohbetin mesajlarını ekrana yazdır
-    for message in current_chat["messages"]:
-        with st.chat_message(message["role"]):
-            if message.get("type") == "image":
-                st.image(message["content"], caption="Yüklenen Görsel", use_container_width=True)
-            else:
-                st.markdown(message["content"])
+# Kullanıcıdan girdi al
+if prompt := st.chat_input("Mesajınızı yazın..."):
+    # Kullanıcı mesajını ekle
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
 
-    # ☰ Menü Paneli
-    if st.session_state.menu_open:
-        st.markdown("""
-            <div style="background-color: #16192b; padding: 15px; border-radius: 10px; border: 1px solid #262d3d; margin-bottom: 10px;">
-            <p style="color: #4CAF50; font-weight: bold; margin-bottom: 10px;">⚙️ Kontrol Paneli</p>
-        """, unsafe_allow_html=True)
+    # Asistan yanıtı
+    with st.chat_message("assistant"):
+        response_content = ""
         
-        col_m1, col_m2 = st.columns(2)
-        with col_m1:
-            if st.button("➕ Yeni Sohbet", use_container_width=True):
-                new_id = str(uuid.uuid4())[:8]
-                st.session_state.all_chats[new_id] = {"title": "Yeni Sohbet", "model": st.session_state.selected_ai, "messages": []}
-                st.session_state.current_chat_id = new_id
-                st.session_state.menu_open = False
-                st.rerun()
-        with col_m2:
-            if st.button("🔄 Mod Değiştir", use_container_width=True):
-                st.session_state.selected_ai = None
-                st.session_state.current_chat_id = None
-                st.session_state.menu_open = False
-                st.rerun()
-
-        st.markdown("<hr style='margin: 15px 0; border-color: #262d3d;'>", unsafe_allow_html=True)
-        st.markdown("<b style='color: #fafafa;'>📜 Geçmiş Sohbetler</b>", unsafe_allow_html=True)
-        
-        for chat_id, chat_data in list(st.session_state.all_chats.items()):
-            active_mark = "👉 " if chat_id == cur_id else ""
-            if st.button(f"{active_mark}{chat_data['title']} ({chat_data['model']})", key=f"chat_btn_{chat_id}", use_container_width=True):
-                st.session_state.current_chat_id = chat_id
-                st.session_state.selected_ai = chat_data['model']
-                st.session_state.menu_open = False
-                st.rerun()
-                
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    # ➕ Dosya/Fotoğraf Menüsü
-    if st.session_state.attachment_open:
-        st.markdown("""
-            <div style="background-color: #16192b; padding: 12px; border-radius: 10px; border: 1px solid #262d3d; margin-bottom: 5px;">
-            <p style="color: #38bdf8; font-weight: bold; font-size: 14px; margin-bottom: 8px;">📎 Medya ve Dosya Ekle</p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        uploaded_file = st.file_uploader("Fotoğraf veya Belge Seç", type=["png", "jpg", "jpeg", "pdf", "txt"], key="file_uploadi")
-        if uploaded_file is not None:
-            current_chat["messages"].append({"role": "user", "type": "image", "content": uploaded_file})
-            current_chat["messages"].append({"role": "assistant", "type": "text", "content": f"Görsel alındı ({uploaded_file.name}). [{st.session_state.selected_ai}] modu ile işleniyor."})
-            st.session_state.attachment_open = False
-            st.rerun()
-
-    # Butonlar
-    col_btn_menu, col_btn_plus = st.columns([4, 1])
-    with col_btn_menu:
-        if st.button("☰ Menü", use_container_width=True):
-            st.session_state.menu_open = not st.session_state.menu_open
-            st.session_state.attachment_open = False
-            st.rerun()
-    with col_btn_plus:
-        if st.button("➕", use_container_width=True):
-            st.session_state.attachment_open = not st.session_state.attachment_open
-            st.session_state.menu_open = False
-            st.rerun()
-
-    # Mesajlaşma Alanı (Gerçek Yapay Zeka Entegrasyonu)
-    if prompt := st.chat_input("Mesajınızı yazın..."):
-        if current_chat["title"] == "Yeni Sohbet":
-            current_chat["title"] = prompt[:22] + ("..." if len(prompt) > 22 else "")
-
-        current_chat["messages"].append({"role": "user", "type": "text", "content": prompt})
-        
-        mode = st.session_state.selected_ai
-        response = ""
-
-        if mode == "Internetsiz":
-            # Internetsiz mod için çevrimdışı yerel yanıt simülasyonu
-            response = f"📴 **[Internetsiz (Offline) Mod]:** '{prompt}' yerel önbellek üzerinden işlendi. İnternet bağlantısı gerektirmez."
+        if mode == "Internetsiz (Offline)":
+            response_content = f"[Internetsiz (Offline) Mod]: '{prompt}' yerel önbellek üzerinden işlendi. İnternet bağlantısı gerektirmez."
+            st.markdown(response_content)
+            
+        elif client is None:
+            response_content = "⚠️ Groq API anahtarı bulunamadı veya geçersiz! Lütfen Streamlit Secrets ayarlarına geçerli bir API anahtarı ekleyin."
+            st.error(response_content)
+            
         else:
             try:
-                # Groq API üzerinden gerçek model bağlantısı (Normal veya Kodlama modu)
-                api_key = st.secrets.get("GROQ_API_KEY", "")
-                if not api_key:
-                    response = "⚠️ Hata: Streamlit Secrets içerisine GROQ_API_KEY eklenmemiş!"
+                # Modlara göre güncel Groq modelleri
+                if mode == "Normal":
+                    model_name = "llama-3.1-8b-instant"
                 else:
-                    client = Groq(api_key=api_key)
-                    
-                    # Modlara göre model seçimi
-                    model_to_use = "llama3-8b-8192" if mode == "Normal" else "llama3-70b-8192"
-                    system_prompt = "Sen acil durumlar için yardımcı bir asistansın." if mode == "Normal" else "Sen profesyonel bir yazılım ve kodlama uzmanısın."
-
-                    chat_completion = client.chat.completions.create(
-                        messages=[
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": prompt}
-                        ],
-                        model=model_to_use,
-                    )
-                    response = chat_completion.choices[0].message.content
+                    model_name = "llama-3.3-70b-versatile"
+                
+                # API çağrısı
+                chat_completion = client.chat.completions.create(
+                    messages=[
+                        {"role": m["role"], "content": m["content"]}
+                        for m in st.session_state.messages
+                    ],
+                    model=model_name,
+                )
+                response_content = chat_completion.choices[0].message.content
+                st.markdown(response_content)
+                
             except Exception as e:
-                response = f"Bağlantı hatası oluştu: {str(e)}"
-
-        current_chat["messages"].append({"role": "assistant", "type": "text", "content": response})
-        st.session_state.attachment_open = False
-        st.rerun()
+                response_content = f"Bağlantı hatası oluştu: {e}"
+                st.error(response_content)
+        
+        # Asistan yanıtını hafızaya kaydet
+        st.session_state.messages.append({"role": "assistant", "content": response_content})
         
